@@ -1,0 +1,138 @@
+#!/bin/bash
+# Pre-push hook for Git
+# Runs checks before allowing push to remote
+
+set -e
+
+echo -e "🚀 Running pre-push checks..."
+
+# Get current branch
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+
+# Check 1: Don't push directly to protected branches
+PROTECTED_BRANCHES="^(main|master|production|release/.*)$"
+
+if echo "$CURRENT_BRANCH" | grep -Eq "$PROTECTED_BRANCHES"; then
+    echo -e "✗ Direct push to '$CURRENT_BRANCH' is not allowed!"
+    echo -e "  Use pull requests/merge requests instead"
+    exit 1
+fi
+
+# Check 2: Validate branch naming convention
+# Expected: feature/, bugfix/, hotfix/, release/, etc.
+VALID_BRANCH_PATTERN="^(feature|bugfix|hotfix|release|docs|refactor|test|chore)/.+"
+
+if ! echo "$CURRENT_BRANCH" | grep -Eq "$VALID_BRANCH_PATTERN"; then
+    if ! echo "$CURRENT_BRANCH" | grep -Eq "^(main|master|develop|staging)$"; then
+        echo -e "⚠ Warning: Branch name doesn't follow naming convention"
+        echo "  Expected: type/description (e.g., feature/new-login)"
+        echo "  Types: feature, bugfix, hotfix, release, docs, refactor, test, chore"
+        echo ""
+        read -p "Continue anyway? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+fi
+
+# Check 3: Ensure we're up to date with remote
+echo "Checking if branch is up to date..."
+git fetch origin "$CURRENT_BRANCH" 2>/dev/null || true
+
+LOCAL=$(git rev-parse @ 2>/dev/null)
+REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
+
+if [ -n "$REMOTE" ]; then
+    BASE=$(git merge-base @ @{u} 2>/dev/null)
+    
+    if [ "$LOCAL" != "$REMOTE" ] && [ "$LOCAL" = "$BASE" ]; then
+        echo -e "✗ Your branch is behind the remote"
+        echo -e "  Pull latest changes: git pull --rebase"
+        exit 1
+    fi
+fi
+
+# Check 4: Run tests if test command exists
+if [ -f "package.json" ] && grep -q '"test"' package.json; then
+    echo "Running tests..."
+    if npm test; then
+        echo -e "✓ Tests passed"
+    else
+        echo -e "✗ Tests failed"
+        echo -e "  Fix tests before pushing"
+        exit 1
+    fi
+elif [ -f "Makefile" ] && grep -q "^test:" Makefile; then
+    echo "Running tests..."
+    if make test; then
+        echo -e "✓ Tests passed"
+    else
+        echo -e "✗ Tests failed"
+        exit 1
+    fi
+elif [ -f "pytest.ini" ] || [ -f "setup.py" ]; then
+    if command -v pytest &> /dev/null; then
+        echo "Running Python tests..."
+        if pytest; then
+            echo -e "✓ Tests passed"
+        else
+            echo -e "✗ Tests failed"
+            exit 1
+        fi
+    fi
+fi
+
+# Check 5: Check for large files in history
+echo "Checking for large files..."
+LARGE_FILES=$(git ls-tree -r -l HEAD | awk '$4 > 5242880' | awk '{print $5, "(" $4/1048576 "MB)"}')
+
+if [ -n "$LARGE_FILES" ]; then
+    echo -e "⚠ Warning: Large files detected:"
+    echo "$LARGE_FILES"
+    echo -e "  Consider using Git LFS"
+    echo ""
+    read -p "Continue anyway? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Check 6: Warn about force push
+while read local_ref local_sha remote_ref remote_sha; do
+    if [ "$local_sha" != "0000000000000000000000000000000000000000" ]; then
+        # Check if this would be a force push
+        if [ "$remote_sha" != "0000000000000000000000000000000000000000" ]; then
+            if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+                echo -e "⚠ This appears to be a force push!"
+                echo -e "  Force pushing rewrites history"
+                echo ""
+                read -p "Are you sure you want to force push? [y/N] " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+done
+
+# Check 7: Verify no debug/console statements
+echo "Checking for debug statements..."
+DEBUG_COUNT=$(git diff origin/"$CURRENT_BRANCH"...HEAD | grep -cE "^\+.*(console\.log|debugger|print\()" || true)
+
+if [ "$DEBUG_COUNT" -gt 0 ]; then
+    echo -e "⚠ Warning: $DEBUG_COUNT debug statement(s) found"
+    git diff origin/"$CURRENT_BRANCH"...HEAD | grep -E "^\+.*(console\.log|debugger|print\()" || true
+    echo ""
+    read -p "Continue anyway? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+echo -e "✓ All pre-push checks passed!"
+echo -e "✓ Ready to push"
+exit 0
