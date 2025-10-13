@@ -1,0 +1,114 @@
+#!/bin/bash
+# Pre-commit hook for Git
+# Runs validation checks before allowing commit
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$STAGED_FILES" ]; then
+    echo -e "⚠ No files staged for commit"
+    exit 0
+fi
+
+# Check 1: Prevent commits to protected branches
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+PROTECTED_BRANCHES="^(main|master|production|release/.*)$"
+
+if echo "$BRANCH" | grep -Eq "$PROTECTED_BRANCHES"; then
+    echo -e "✗ Direct commits to '$BRANCH' are not allowed!"
+    echo -e "  Create a feature branch instead:"
+    echo -e "  git checkout -b feature/your-feature-name"
+    exit 1
+fi
+
+# Check 2: Look for conflict markers
+echo "Checking for conflict markers..."
+CONFLICTS=$(git diff --cached --name-only | xargs grep -l "^<<<<<<< \|^======= \|^>>>>>>> " 2>/dev/null || true)
+
+if [ -n "$CONFLICTS" ]; then
+    echo -e "✗ Conflict markers found in:"
+    echo "$CONFLICTS"
+    exit 1
+fi
+
+# Check 3: Check for TODO/FIXME comments being added
+echo "Checking for TODO/FIXME comments..."
+TODO_COUNT=$(git diff --cached | grep -E "^\+.*\b(TODO|FIXME|XXX|HACK)\b" | wc -l | tr -d ' ')
+
+if [ "$TODO_COUNT" -gt 0 ]; then
+    echo -e "⚠ Warning: Adding $TODO_COUNT TODO/FIXME comment(s)"
+    git diff --cached | grep -E "^\+.*\b(TODO|FIXME|XXX|HACK)\b" || true
+    echo ""
+    read -p "Continue anyway? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Check 4: Trailing whitespace
+echo "Checking for trailing whitespace..."
+if git diff --cached --check; then
+    echo -e "✓ No trailing whitespace"
+else
+    echo -e "✗ Trailing whitespace found"
+    echo -e "  Fix with: git diff --cached | sed 's/[ \t]*$//' | git apply --cached"
+    exit 1
+fi
+
+# Check 5: Check for large files (>5MB)
+echo "Checking for large files..."
+for FILE in $STAGED_FILES; do
+    if [ -f "$FILE" ]; then
+        FILE_SIZE=$(du -k "$FILE" | cut -f1)
+        if [ "$FILE_SIZE" -gt 5120 ]; then
+            echo -e "✗ Large file detected: $FILE (${FILE_SIZE}KB)"
+            echo -e "  Consider using Git LFS for files >5MB"
+            exit 1
+        fi
+    fi
+done
+
+# Check 6: Check for sensitive data patterns
+echo "Checking for sensitive data..."
+SENSITIVE_PATTERNS=(
+    "password\s*=\s*['\"].*['\"]"
+    "api[_-]?key\s*=\s*['\"].*['\"]"
+    "secret\s*=\s*['\"].*['\"]"
+    "token\s*=\s*['\"].*['\"]"
+    "aws_access_key_id"
+    "aws_secret_access_key"
+    "private[_-]?key"
+)
+
+for PATTERN in "${SENSITIVE_PATTERNS[@]}"; do
+    FOUND=$(git diff --cached | grep -iE "$PATTERN" || true)
+    if [ -n "$FOUND" ]; then
+        echo -e "✗ Potential sensitive data found:"
+        echo "$FOUND"
+        echo -e "  Remove sensitive data before committing!"
+        exit 1
+    fi
+done
+
+# Check 7: Check for debug statements
+echo "Checking for debug statements..."
+DEBUG_PATTERNS="console\.log|debugger|print\(|var_dump|dd\("
+DEBUG_FOUND=$(git diff --cached | grep -E "^\+.*($DEBUG_PATTERNS)" || true)
+
+if [ -n "$DEBUG_FOUND" ]; then
+    echo -e "⚠ Warning: Debug statements found"
+    echo "$DEBUG_FOUND"
+    echo ""
+    read -p "Continue anyway? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+echo -e "✓ All pre-commit checks passed!"
+exit 0
