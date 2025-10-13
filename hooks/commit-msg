@@ -1,0 +1,89 @@
+#!/bin/bash
+# Commit-msg hook for Git
+# Validates commit message format (Conventional Commits)
+
+set -e
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+if echo "$COMMIT_MSG" | grep -q "^Merge "; then
+    exit 0
+fi
+
+if echo "$COMMIT_MSG" | grep -q "^WIP"; then
+    exit 0
+fi
+
+echo "🔍 Validating commit message..."
+
+CONVENTIONAL_PATTERN="^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .+"
+
+if ! echo "$COMMIT_MSG" | grep -Eq "$CONVENTIONAL_PATTERN"; then
+    echo -e "✗ Invalid commit message format!"
+    echo ""
+    echo -e "Commit message should follow Conventional Commits:"
+    echo "  type(scope): subject"
+    echo ""
+    echo "Types:"
+    echo "  feat:     A new feature"
+    echo "  fix:      A bug fix"
+    echo "  docs:     Documentation changes"
+    echo "  style:    Code style changes (formatting, etc.)"
+    echo "  refactor: Code refactoring"
+    echo "  test:     Adding or updating tests"
+    echo "  chore:    Maintenance tasks"
+    echo "  perf:     Performance improvements"
+    echo "  ci:       CI/CD changes"
+    echo "  build:    Build system changes"
+    echo "  revert:   Revert a previous commit"
+    echo ""
+    echo "Examples:"
+    echo "  feat(auth): add login functionality"
+    echo "  fix(api): resolve connection timeout"
+    echo "  docs: update installation guide"
+    echo ""
+    echo -e "Your message:"
+    echo "  $COMMIT_MSG"
+    exit 1
+fi
+
+SUBJECT_LINE=$(echo "$COMMIT_MSG" | head -n 1)
+SUBJECT_LENGTH=${#SUBJECT_LINE}
+
+if [ "$SUBJECT_LENGTH" -gt 72 ]; then
+    echo -e "✗ Subject line too long (${SUBJECT_LENGTH} > 72 characters)"
+    echo -e "Keep subject line under 72 characters"
+    exit 1
+fi
+
+if echo "$SUBJECT_LINE" | grep -Eq ": (added|fixed|changed|updated|removed)"; then
+    echo -e "⚠ Warning: Use imperative mood (add, fix, change) not past tense"
+    echo "  Instead of: 'added feature' use 'add feature'"
+fi
+
+TYPE_AND_SCOPE=$(echo "$SUBJECT_LINE" | sed 's/:.*//')
+SUBJECT=$(echo "$SUBJECT_LINE" | sed 's/^[^:]*: //')
+
+if echo "$SUBJECT" | grep -q "^[A-Z]"; then
+    echo -e "⚠ Warning: Subject should start with lowercase"
+fi
+
+if echo "$SUBJECT" | grep -q "\.$"; then
+    echo -e "⚠ Warning: Subject should not end with period"
+fi
+
+if [ $(echo "$COMMIT_MSG" | wc -l) -gt 1 ]; then
+    SECOND_LINE=$(echo "$COMMIT_MSG" | sed -n '2p')
+    if [ -n "$SECOND_LINE" ]; then
+        echo -e "⚠ Warning: Add blank line between subject and body"
+    fi
+    
+    LONG_LINES=$(echo "$COMMIT_MSG" | tail -n +3 | awk 'length > 100')
+    if [ -n "$LONG_LINES" ]; then
+        echo -e "⚠ Warning: Body lines should be wrapped at 100 characters"
+    fi
+fi
+
+echo -e "✓ Commit message validated"
+exit 0
