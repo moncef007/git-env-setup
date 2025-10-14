@@ -1,0 +1,94 @@
+#!/bin/bash
+# git-stats - Show repository statistics
+# Usage: git stats [author]
+
+AUTHOR="$1"
+
+echo -e "📊 Git Repository Statistics"
+echo "================================"
+
+echo -e "\nRepository Information:"
+echo "Path: $(pwd)"
+echo "Branch: $(git symbolic-ref --short HEAD 2>/dev/null || echo 'Detached HEAD')"
+echo "Remote: $(git remote get-url origin 2>/dev/null || echo 'No remote')"
+
+echo -e "\nCommit Statistics:"
+if [ -n "$AUTHOR" ]; then
+    echo "Author: $AUTHOR"
+    TOTAL_COMMITS=$(git rev-list --count --all --author="$AUTHOR")
+else
+    TOTAL_COMMITS=$(git rev-list --count --all)
+fi
+echo "Total commits: $TOTAL_COMMITS"
+
+FIRST_COMMIT=$(git log --reverse --format="%ai" | head -1)
+LAST_COMMIT=$(git log -1 --format="%ai")
+echo "First commit: $FIRST_COMMIT"
+echo "Last commit: $LAST_COMMIT"
+
+echo -e "\nBranch Statistics:"
+echo "Local branches: $(git branch | wc -l)"
+echo "Remote branches: $(git branch -r | wc -l)"
+echo "Total branches: $(git branch -a | wc -l)"
+
+echo -e "\nTag Statistics:"
+echo "Total tags: $(git tag | wc -l)"
+if [ "$(git tag | wc -l)" -gt 0 ]; then
+    echo "Latest tag: $(git describe --tags --abbrev=0 2>/dev/null || echo 'None')"
+fi
+
+echo -e "\nFile Statistics:"
+echo "Total files tracked: $(git ls-files | wc -l)"
+echo "File types:"
+git ls-files | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -10
+
+echo -e "\nTop 10 Contributors:"
+if [ -n "$AUTHOR" ]; then
+    git shortlog -sn --all --author="$AUTHOR" | head -10
+else
+    git shortlog -sn --all | head -10
+fi
+
+echo -e "\nActivity by Day of Week:"
+if [ -n "$AUTHOR" ]; then
+    git log --author="$AUTHOR" --format="%ad" --date=format:"%A" | sort | uniq -c | sort -rn
+else
+    git log --format="%ad" --date=format:"%A" | sort | uniq -c | sort -rn
+fi
+
+echo -e "\nActivity by Hour:"
+if [ -n "$AUTHOR" ]; then
+    git log --author="$AUTHOR" --format="%ad" --date=format:"%H" | sort | uniq -c | sort -k2 -n
+else
+    git log --format="%ad" --date=format:"%H" | sort | uniq -c | sort -k2 -n
+fi
+
+echo -e "\nRepository Size:"
+echo ".git directory: $(du -sh .git 2>/dev/null | cut -f1)"
+echo "Working directory: $(du -sh --exclude=.git . 2>/dev/null | cut -f1)"
+
+echo -e "\nRecent Activity (Last 7 Days):"
+if [ -n "$AUTHOR" ]; then
+    RECENT_COMMITS=$(git log --author="$AUTHOR" --since="7 days ago" --oneline | wc -l)
+else
+    RECENT_COMMITS=$(git log --since="7 days ago" --oneline | wc -l)
+fi
+echo "Commits: $RECENT_COMMITS"
+
+echo -e "\nCode Churn (Last 30 Days):"
+if [ -n "$AUTHOR" ]; then
+    git log --author="$AUTHOR" --since="30 days ago" --pretty=tformat: --numstat | \
+        awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "Added: %s\nDeleted: %s\nTotal: %s\n", add, subs, loc }'
+else
+    git log --since="30 days ago" --pretty=tformat: --numstat | \
+        awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "Added: %s\nDeleted: %s\nTotal: %s\n", add, subs, loc }'
+fi
+
+echo -e "\nTop 10 Most Modified Files:"
+if [ -n "$AUTHOR" ]; then
+    git log --author="$AUTHOR" --pretty=format: --name-only | sort | uniq -c | sort -rn | head -10
+else
+    git log --pretty=format: --name-only | sort | uniq -c | sort -rn | head -10
+fi
+
+echo ""
