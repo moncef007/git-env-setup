@@ -1,0 +1,93 @@
+#!/bin/bash
+# git-cleanup - Clean up merged branches and optimize repository
+# Usage: git cleanup [--dry-run]
+
+set -e
+
+DRY_RUN=false
+if [ "$1" = "--dry-run" ]; then
+    DRY_RUN=true
+    echo -e "🔍 DRY RUN MODE - No changes will be made"
+fi
+
+echo -e "🧹 Cleaning up repository..."
+
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+echo "Current branch: $CURRENT_BRANCH"
+
+PROTECTED_BRANCHES="main|master|develop|staging|production"
+
+echo -e "\nFinding merged branches..."
+MERGED_BRANCHES=$(git branch --merged | grep -vE "^\*|$PROTECTED_BRANCHES" | sed 's/^[ \t]*//' || true)
+
+if [ -z "$MERGED_BRANCHES" ]; then
+    echo -e "✓ No merged branches to clean up"
+else
+    echo "Merged branches:"
+    echo "$MERGED_BRANCHES"
+    
+    if [ "$DRY_RUN" = false ]; then
+        echo ""
+        read -p "Delete these branches? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "$MERGED_BRANCHES" | xargs -n 1 git branch -d
+            echo -e "✓ Deleted merged branches"
+        fi
+    fi
+fi
+
+echo -e "\nFinding stale remote branches..."
+git fetch --prune
+
+STALE_REMOTES=$(git branch -r --merged | grep -vE "origin/(main|master|develop|staging|production|HEAD)" | sed 's/origin\///' || true)
+
+if [ -z "$STALE_REMOTES" ]; then
+    echo -e "✓ No stale remote branches"
+else
+    echo "Merged remote branches:"
+    echo "$STALE_REMOTES"
+    
+    if [ "$DRY_RUN" = false ]; then
+        echo ""
+        echo -e "⚠ This will delete branches from the remote!"
+        read -p "Delete these remote branches? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "$STALE_REMOTES" | xargs -I {} git push origin --delete {}
+            echo -e "✓ Deleted stale remote branches"
+        fi
+    fi
+fi
+
+echo -e "\nPruning stale tracking branches..."
+if [ "$DRY_RUN" = false ]; then
+    git remote prune origin
+    echo -e "✓ Pruned stale tracking branches"
+else
+    git remote prune origin --dry-run
+fi
+
+echo -e "\nCleaning reflog..."
+if [ "$DRY_RUN" = false ]; then
+    git reflog expire --expire=30.days --all
+    echo -e "✓ Cleaned reflog (30+ days)"
+fi
+
+echo -e "\nRunning garbage collection..."
+if [ "$DRY_RUN" = false ]; then
+    git gc --prune=now --aggressive
+    echo -e "✓ Garbage collection complete"
+fi
+
+echo -e "\n📊 Repository Statistics:"
+echo "Size: $(du -sh .git | cut -f1)"
+echo "Objects: $(git count-objects -v | grep 'count:' | awk '{print $2}')"
+echo "Branches: $(git branch -a | wc -l | tr -d ' ')"
+echo "Commits: $(git rev-list --count HEAD)"
+
+if [ "$DRY_RUN" = true ]; then
+    echo -e "\nThis was a dry run. Run without --dry-run to apply changes"
+else
+    echo -e "\n✓ Cleanup complete!"
+fi
