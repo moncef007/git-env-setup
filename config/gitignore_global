@@ -1,0 +1,65 @@
+# Global .gitignore - Development Environment
+
+# === IDE & Editor Files ===
+
+# JetBrains (IntelliJ, PyCharm, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# VSCode
+.vscode/
+*.code-workspace
+.history/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# === Programming Languages ===
+
+# Python
+__pycache__/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.mypy_cache/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# C/C++
+*.o
+*.obj
+*.ko
+*.elf
+*.ilk
+*.map
+*.exp
+*.gch
+*.pch
+*.lib
+*.a
+*.la
+*.lo
+*.slo
+*.d
+*.su
+*.idb
+*.pdb
+*.mod
+*.smod
+*.lai
+*.dSYM/
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
