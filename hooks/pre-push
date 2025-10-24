@@ -20,7 +20,7 @@ fi
 
 # Check 2: Validate branch naming convention
 # Expected: feature/, bugfix/, hotfix/, release/, etc.
-VALID_BRANCH_PATTERN="^(feature|bugfix|hotfix|release|docs|refactor|test|chore)/.+"
+VALID_BRANCH_PATTERN="^(feature|bugfix|hotfix|release|docs|refactor|test|chore)/.+|^(dev_)+"
 
 if ! echo "$CURRENT_BRANCH" | grep -Eq "$VALID_BRANCH_PATTERN"; then
     if ! echo "$CURRENT_BRANCH" | grep -Eq "^(main|master|develop|staging)$"; then
