@@ -1,14 +1,14 @@
-# Git Environment Setup 🚀
+# Git Environment Setup
 
 A professional Git environment configuration with aliases, hooks, and developer tooling.
 
 ## Features
 
-- 🎯 **Git Aliases**: Comprehensive set of productivity-boosting aliases
-- 🪝 **Git Hooks**: Pre-commit, commit-msg, and pre-push hooks
-- 🎨 **Pretty Logging**: Enhanced git log formats
-- 🔧 **Best Practices**: Industry-standard Git configurations
-- 📦 **Easy Installation**: One-command setup via Makefile
+- **Git Aliases**: Comprehensive set of productivity-boosting aliases
+- **Git Hooks**: Pre-commit, commit-msg, and pre-push hooks
+- **Pretty Logging**: Enhanced git log formats
+- **Best Practices**: Industry-standard Git configurations
+- **Easy Installation**: One-command setup via Makefile
 
 ## Quick Start
 
@@ -126,9 +126,9 @@ GPLv3 License.
 
 ## Support
 
-- 📖 Full documentation in `docs/` directory
-- 🐛 Report issues on GitHub
-- 💡 Suggestions welcome!
+- Full documentation in `docs/` directory
+- Report issues on GitHub
+- Suggestions welcome!
 
 ---
 
