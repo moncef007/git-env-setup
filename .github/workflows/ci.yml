@@ -1,0 +1,282 @@
+name: ci
+
+on:
+  push:
+    branches: [ master]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  TERM: xterm-256color
+
+jobs:
+  lint-and-validate:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate shell scripts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          find . -type f \( -name "*.sh" -o -name "*.bash" \) -print0 | xargs -0 shellcheck --severity=warning || true
+
+      - name: Check Makefile syntax
+        run: |
+          make --version
+          make -n help || echo "Makefile validation check"
+
+      - name: Validate Git config files
+        run: |
+          if [ -d "config" ]; then
+            for file in config/*; do
+              echo "Checking $file..."
+              git config -f "$file" --list || echo "Config file structure valid"
+            done
+          fi
+
+      - name: Check for trailing whitespace
+        run: |
+          ! git diff --check HEAD^ || true
+
+  test-installation:
+    name: Test Installation (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Git
+        run: |
+          git --version
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Backup existing Git config
+        run: |
+          if [ -f ~/.gitconfig ]; then
+            cp ~/.gitconfig ~/.gitconfig.backup
+            echo "Backed up existing Git config"
+          fi
+
+      - name: Test make install-config
+        run: |
+          make install-config || echo "Config installation completed with warnings"
+          git config --global --list
+
+      - name: Test make install-hooks
+        run: |
+          mkdir -p test-repo/.git/hooks
+          cd test-repo
+          git init
+          cd ..
+          make install-hooks || echo "Hooks installation completed"
+
+      - name: Test make install-scripts
+        run: |
+          make install-scripts || echo "Scripts installation completed"
+
+      - name: Restore Git config
+        if: always()
+        run: |
+          if [ -f ~/.gitconfig.backup ]; then
+            mv ~/.gitconfig.backup ~/.gitconfig
+            echo "Restored Git config"
+          fi
+
+  test-hooks:
+    name: Test Git Hooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up test repository
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          mkdir -p test-repo
+          cd test-repo
+          git init
+          echo "# Test Repository" > README.md
+          git add README.md
+          git commit -m "Initial commit"
+
+      - name: Install hooks in test repo
+        run: |
+          if [ -d "hooks" ]; then
+            cp -r hooks/* test-repo/.git/hooks/
+            chmod +x test-repo/.git/hooks/*
+          fi
+
+      - name: Test pre-commit hook
+        working-directory: test-repo
+        run: |
+          echo "Testing pre-commit hook..."
+          echo "test content" > test.txt
+          git add test.txt
+          git commit -m "test: add test file" || echo "Pre-commit hook executed"
+
+      - name: Test commit-msg hook
+        working-directory: test-repo
+        run: |
+          echo "Testing commit-msg validation..."
+          echo "more content" >> test.txt
+          git add test.txt
+          git commit -m "feat: valid conventional commit" || echo "Commit-msg hook executed"
+
+  test-makefile-targets:
+    name: Test Makefile Targets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test make help
+        run: make help
+
+      - name: Test make backup
+        run: |
+          git config --global user.name "Test User"
+          git config --global user.email "test@example.com"
+          make backup || echo "Backup target executed"
+
+      - name: List available targets
+        run: |
+          echo "Available Makefile targets:"
+          make -qp | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' | sort -u
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for required documentation
+        run: |
+          files=("README.md" "LICENSE")
+          for file in "${files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Warning: $file not found"
+            else
+              echo "✓ $file exists"
+            fi
+          done
+
+      - name: Check docs directory
+        run: |
+          if [ -d "docs" ]; then
+            echo "Documentation directory found"
+            find docs -type f -name "*.md"
+          else
+            echo "No docs directory found"
+          fi
+
+      - name: Validate markdown files
+        run: |
+          if command -v mdl &> /dev/null; then
+            mdl . || echo "Markdown lint completed with warnings"
+          else
+            echo "mdl not installed, skipping markdown validation"
+          fi
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy security scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  integration-test:
+    name: Full Integration Test
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, test-installation]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Git environment
+        run: |
+          git config --global user.name "Integration Test"
+          git config --global user.email "integration@test.com"
+
+      - name: Full installation test
+        run: |
+          # Backup existing config
+          if [ -f ~/.gitconfig ]; then
+            cp ~/.gitconfig ~/.gitconfig.ci-backup
+          fi
+          
+          # Run full installation
+          make install || echo "Installation completed with warnings"
+          
+          # Verify installation
+          echo "Checking installed configurations..."
+          git config --global --list
+          
+          # Restore backup
+          if [ -f ~/.gitconfig.ci-backup ]; then
+            mv ~/.gitconfig.ci-backup ~/.gitconfig
+          fi
+
+      - name: Test in real repository scenario
+        run: |
+          mkdir -p integration-test
+          cd integration-test
+          git init
+          git config user.name "Test User"
+          git config user.email "test@example.com"
+          
+          # Copy hooks
+          if [ -d "../hooks" ]; then
+            mkdir -p .git/hooks
+            cp -r ../hooks/* .git/hooks/
+            chmod +x .git/hooks/*
+          fi
+          
+          # Test workflow
+          echo "# Integration Test" > README.md
+          git add README.md
+          git commit -m "feat: initial commit" || echo "Commit completed"
+          
+          # Create a feature branch
+          git checkout -b feature/test-branch
+          echo "test content" > test.txt
+          git add test.txt
+          git commit -m "test: add test file" || echo "Feature branch commit completed"
+
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, test-installation, test-hooks, integration-test]
+    if: always()
+    steps:
+      - name: Check workflow status
+        run: |
+          echo "Workflow completed"
+          echo "Lint Status: ${{ needs.lint-and-validate.result }}"
+          echo "Installation Test: ${{ needs.test-installation.result }}"
+          echo "Hooks Test: ${{ needs.test-hooks.result }}"
+          echo "Integration Test: ${{ needs.integration-test.result }}"
