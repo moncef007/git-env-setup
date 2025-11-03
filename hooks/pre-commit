@@ -57,7 +57,7 @@ if [ "$TODO_COUNT" -gt 0 ]; then
     echo -e "⚠ Warning: Adding $TODO_COUNT TODO/FIXME comment(s)"
     git diff --cached | grep -E "^\+.*\b(TODO|FIXME|XXX|HACK)\b" || true
     echo ""
-    read -p "Continue anyway? [y/N] " -n 1 -r
+    read -p "Continue anyway? [y/N] " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
@@ -70,7 +70,7 @@ if git diff --cached --check; then
     echo -e "✓ No trailing whitespace"
 else
     echo -e "✗ Trailing whitespace found"
-    echo -e "  Fix with: git diff --cached | sed 's/[ \t]*$//' | git apply --cached"
+    echo -e "  Fix with: git diff --name-only --cached | xargs sed -i 's/[ \t]*$//' && git add -u"
     exit 1
 fi
 
@@ -118,7 +118,7 @@ if [ -n "$DEBUG_FOUND" ]; then
     echo -e "⚠ Warning: Debug statements found"
     echo "$DEBUG_FOUND"
     echo ""
-    read -p "Continue anyway? [y/N] " -n 1 -r
+    read -p "Continue anyway? [y/N] " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1

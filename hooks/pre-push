@@ -43,7 +43,7 @@ if ! echo "$CURRENT_BRANCH" | grep -Eq "$VALID_BRANCH_PATTERN"; then
         echo "  Expected: type/description (e.g., feature/new-login)"
         echo "  Types: feature, bugfix, hotfix, release, docs, refactor, test, chore"
         echo ""
-        read -p "Continue anyway? [y/N] " -n 1 -r
+        read -p "Continue anyway? [y/N] " -n 1 -r < /dev/tty
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             exit 1
@@ -107,7 +107,7 @@ if [ -n "$LARGE_FILES" ]; then
     echo "$LARGE_FILES"
     echo -e "  Consider using Git LFS"
     echo ""
-    read -p "Continue anyway? [y/N] " -n 1 -r
+    read -p "Continue anyway? [y/N] " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
@@ -123,7 +123,7 @@ while read local_ref local_sha remote_ref remote_sha; do
                 echo -e "⚠ This appears to be a force push!"
                 echo -e "  Force pushing rewrites history"
                 echo ""
-                read -p "Are you sure you want to force push? [y/N] " -n 1 -r
+                read -p "Are you sure you want to force push? [y/N] " -n 1 -r < /dev/tty
                 echo
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     exit 1
@@ -141,7 +141,7 @@ if [ "$DEBUG_COUNT" -gt 0 ]; then
     echo -e "⚠ Warning: $DEBUG_COUNT debug statement(s) found"
     git diff origin/"$CURRENT_BRANCH"...HEAD | grep -E "^\+.*(console\.log|debugger|print\()" || true
     echo ""
-    read -p "Continue anyway? [y/N] " -n 1 -r
+    read -p "Continue anyway? [y/N] " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
