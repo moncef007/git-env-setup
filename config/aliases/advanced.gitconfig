@@ -1,0 +1,36 @@
+# Copyright (C) 2025 Mohamed Elmoncef HAMDI <mohamedelmoncef.hamdi@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+[alias]
+    # Rebase operations
+    squash  = "!f() { git rebase -i HEAD~${1:-2}; }; f"  # Interactive rebase last N commits
+    fsquash = "!git rebase -i --root"
+
+    # Cherry-pick
+    cp = cherry-pick
+    cpa = cherry-pick --abort
+    cpc = cherry-pick --continue
+
+    # Contributors
+    contributors = shortlog -sn
+    who = shortlog -sn --
+
+    # Diff, Blame, Files
+    df        = diff                                                                  # Show unstaged changes
+    wdf     = diff -w --word-diff=color --ignore-space-at-eol                         # Show unstaged changes evolved
+    files     = "!f() { git diff-tree --no-commit-id --name-only -r ${1-HEAD}; }; f"  # List changed files in a commit
+    blames     = blame -w -C -C                                                        # Annotate lines with commit info
+    find      = !git ls-files | grep -i                                               # Case-insensitive file search
+    se        = !git rev-list --all | xargs git grep -F                               # Search for specific strings in commit

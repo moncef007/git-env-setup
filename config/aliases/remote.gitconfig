@@ -1,0 +1,22 @@
+# Copyright (C) 2025 Mohamed Elmoncef HAMDI <mohamedelmoncef.hamdi@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+[alias]
+    # --- Remote Operations ---
+    po = !git push origin "$(git rev-parse --abbrev-ref HEAD)"                     # Push to origin                 
+    pof = !git push -f origin "$(git rev-parse --abbrev-ref HEAD)"                 # Push to origin with force
+    pl = pull --rebase                                                             # Pull with rebase
+    up = !git pull --rebase --prune $@ && git submodule update --init --recursive  # Update with rebase and submodules
+    remotes = remote -v                                                            # List remotes

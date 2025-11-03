@@ -1,0 +1,31 @@
+# Copyright (C) 2025 Mohamed Elmoncef HAMDI <mohamedelmoncef.hamdi@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+[alias]
+    # Stash operations
+    st-save = stash save
+    st-pop = stash pop
+    st-list = stash list
+    st-show = stash show -p
+    st-apply = stash apply
+    st-drop = stash drop
+    st-clear = stash clear
+    
+    # Quick stash
+    save = stash save
+    pop = stash pop
+    
+    # Stash with untracked
+    stash-all = stash save --include-untracked

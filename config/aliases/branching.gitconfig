@@ -1,0 +1,31 @@
+# Copyright (C) 2025 Mohamed Elmoncef HAMDI <mohamedelmoncef.hamdi@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+[alias]
+    br      = branch                          # List branches
+    st      = status -sb                      # Show short status with branch info
+
+    # Branch operations
+    co      = checkout                        # Switch branches or restore files
+    cob     = checkout -b                     # Create and switch to a new branch
+
+    # Branch management
+    branches     = branch -a                                                                                  # List all branches (local & remote)
+    delete       = branch -d                                                                                  # Delete a local branch
+    fdelete       = branch -D                                                                                 # Force delete a local branch
+    bclean       = !git gone | xargs -r git branch -D                                                         # Delete all local branches whose remote is gone
+    bdone        = "!f() { DEFAULT=$(git default); git checkout ${1-$DEFAULT} && git up && git bclean; }; f"  # Switch to default/target, update and clean branches
+    bdone-squash = "!f() { DEFAULT=$(git default); git checkout ${1-$DEFAULT} && git up && git bclean-squash ${1-$DEFAULT}; }; f"  # Same as above but only squash-merged branches
+    gone = "!git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/ | awk '$2 == \"[gone]\" { print $1 }'"     # List local branches with gone upstream

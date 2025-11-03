@@ -66,4 +66,13 @@
 	template = ~/.git-env/config/gitmessage
 
 [include]
-        path = ~/.git-env/config/git-aliases.conf
+	path = ~/.git-env/config/aliases/advanced.gitconfig
+	path = ~/.git-env/config/aliases/branching.gitconfig
+	path = ~/.git-env/config/aliases/committing.gitconfig
+	path = ~/.git-env/config/aliases/logging.gitconfig
+	path = ~/.git-env/config/aliases/navigation.gitconfig
+	path = ~/.git-env/config/aliases/remote.gitconfig
+	path = ~/.git-env/config/aliases/stashing.gitconfig
+	path = ~/.git-env/config/aliases/tagging.gitconfig
+	path = ~/.git-env/config/aliases/tools.gitconfig
+	path = ~/.git-env/config/aliases/undoing.gitconfig

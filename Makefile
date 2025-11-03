@@ -1,5 +1,11 @@
 # Git Environment Setup Makefile
 
+MAKEFILE_D := makefile.d
+EXTRA_MAKEFILES := $(wildcard $(MAKEFILE_D)/*.makefile)
+COMPONENTS := $(patsubst $(MAKEFILE_D)/%.makefile,%,$(EXTRA_MAKEFILES))
+
+include $(EXTRA_MAKEFILES)
+
 SHELL := /bin/bash
 .PHONY: help install uninstall backup restore clean install-config install-hooks install-scripts test list-backups
 
@@ -15,12 +21,17 @@ ALIAS_FILE := $(HOME)/.bash_aliases
 TIMESTAMP := $(shell date +%Y%m%d_%H%M%S)
 
 help: ## Show this help message
+	@echo "==========================================================================="
 	@echo -e "Git Environment Setup"
-	@echo -e "====================="
+	@echo "==========================================================================="
 	@echo ""
 	@echo -e "Available targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 	@echo ""
+	@echo "Available help topics:"
+	@$(foreach com,$(COMPONENTS),printf "  %-20s %s\n" "help-$(com)" "$(HELP_DESC_$(com))";)
+	@echo ""
+	@echo "Run 'make help-<topic>' for details."
 
 install: backup install-config install-hooks install-scripts ## Full installation of Git environment
 	@echo -e "✓ Git environment setup complete!"
@@ -63,8 +74,8 @@ install-config: ## Install Git configurations and aliases
 		echo -e "✓ Installed commit message template"; \
 	fi
 
-	@if [ -f $(CONFIG_DIR)/git-aliases.conf ]; then \
-		cp $(CONFIG_DIR)/git-aliases.conf $(TARGET_CONFIG_DIR)/git-aliases.conf; \
+	@if [ -d $(CONFIG_DIR)/aliases ]; then \
+		cp -R $(CONFIG_DIR)/aliases $(TARGET_CONFIG_DIR)/; \
 		echo -e "✓ Installed aliases"; \
 	fi
 
